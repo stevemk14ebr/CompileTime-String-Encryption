@@ -1,64 +1,19 @@
-# VS2013-Compile-Time-XOR
-Compile time string XOR for visual studio 2010-2013.
+# CompileTime-String-Encryption
+C++ 17 compile time string encryption supporting vs2010-2017. Rewrite and update of: https://github.com/stevemk14ebr/VS2013-Compile-Time-XOR
 
-To setup:
+# Changelog compared to other repo
+- File parsing supports widechars, UTF-8 recommended
+- Directory resolution and redirection fixed to support source files in folders
+- Extensive use of C++ features instead of C apis (filesystem, stringstreams, regex, etc)
+- Temp files are now stored along-side originals with _crypt postfix. By-product of fixing directory resolution
+- Xor header no longer needs to be included, it is injected automatically
+- Use after destruction bug fixed. XorStr now returns std::string
+- Xrefkiller removed, it was unstable.
 
-1) Compile this project to .dll
-
-2) Rename the compiled dll to a.dll
-
-3) Navigate to Visual Studio Install Directory -> VC -> bin, locate c1xx.dll
-
-4) Patch c1xx.dll to load a.dll
-
-5) Place a.dll in the VC -> bin directory next to c1xx.dll
-
-		
-
-To use:
-
-  1) Open the project you want to have CT XOR
-
-  2) Place xor.h in your project
-
-  3) Build Project
-
-Notes:
-
-  - Can handle escaped quotes
-
-  - Can handle multiple XOR statements per line
-
-  - Uses Unicode almost entirely
-
-  - This version XOR's in debug and in release mode
-
-  - Encrypted Files are stored in project directory /Temp
-
-  - Original Code and ideas 100% SEGnosis, i simply made a VS2013 compatible a.dll version with a few changes, c1xx.dll patch   created by SEGnosis as well
-
-Necessary directions to patch c1xx.dll and xor.h header can be found here:
-
-http://www.unknowncheats.me/forum/c-and-c-/131623-compile-time-string-encryption-visual-studio-2010-2012-a.html
-
-Example of usage scenario:
-
-You have code such as 
-```C++
-#define SuperSecretKey "ImAKey"
-if(input==SuperSecretKey)
-	printf("You are a valid user!");
-```
-This would turn into
-```C++
-//The XOR macro is expanded at compile time by a.dll
-#define SuperSecretKey XOR("ImAKey")
-if(input==SuperSecretKey)
-	printf("You are a valid user!");
-```
-
-Code-wise this is very simple, but in the 
-decompiled binary your string would lose all xrefs
-(due to how this uses templates, ida isn't good at following
-thousands of unique instances of expanded function templates),
-and would appear similar to 'x33/x33/x33/x33' instead of "ImAKey"
+# Setup
+1) This hooks the compilers wsopen_s api at runtime using my polyhook library. The latest version of polyhook is included, you must build the capstone libs.
+2) Build this project
+3) Find you c1xx.dll in the visual studio installation directory. Use CFF explorer to add a new import address table entry for the dll built by this project
+4) Copy the correct versions of the capstone dll and the dll from this into the same directory as your c1xx.dll
+5) Make a new visual studio project and copy the .editorconfig file to the root. This forces VS to save your source files as UTF8
+6) `#define ENC(x) x` where you want to use encrption, compile, and enjoy
