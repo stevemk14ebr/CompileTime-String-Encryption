@@ -5,18 +5,21 @@
 #include <fstream>
 #include <experimental/filesystem>
 #include <chrono>
+#include <string>
 namespace fs = std::experimental::filesystem;
 
 #include "PolyHook.hpp"
 #include "regexReplace.h"
 #include "xorgen.h"
-#include "xor.hpp"
+//#include "xor.hpp"
 
 fs::v1::path ProjectDir;
 fs::v1::path XorHdrFileName(L"xor_decrypt.hpp");
 fs::v1::path XorHdrFullPath;
 PLH::Detour* PLHwsopen;
 bool skipHook = false;
+
+std::string fileAsStr("#pragma once\n#include <string>\ntemplate <int XORSTART, int BUFLEN>\nclass XorStr\n{\nprivate:\n\tXorStr();\n\n\tstd::string s;\npublic:\n\tstd::string get();\n\n\tXorStr(const char * xs);\n\n\t~XorStr()\n\t{\n\t\ts.clear();\n\t}\n};\n\ntemplate <int XORSTART, int BUFLEN>\nstd::string XorStr<XORSTART, BUFLEN>::get() {\n\treturn s;\n}\n\ntemplate <int XORSTART, int BUFLEN>\nXorStr<XORSTART, BUFLEN>::XorStr(const char * xs)\n{\n\ts.resize(BUFLEN);\n\tuint8_t xvalue = XORSTART;\n\tfor (int i = 0; i < BUFLEN; i++) {\n\t\ts[i] = xs[i] ^ xvalue++;\n\t}\n}");
 
 #define ENC(x) x
 std::string m = ENC("Multiline magic"
@@ -45,17 +48,28 @@ void encryptFileCopy(fs::v1::path orig, fs::v1::path copy) {
 	skipHook = true;
 	InputFile.open(orig);
 
-	//// UCS-2-LE is default VS encoding, add this section and std::ios::binary to open() to read. We assume utf-8 now
+	//// UCS-2-LE is default VS encoding, add this section and std::ios::binary to open() for UCS-2-LE
 	//InputFile.imbue(std::locale(InputFile.getloc(),
 	//	new std::codecvt_utf16<wchar_t, 0x10ffff, std::little_endian>));
+	
+	// assumes UTF-8
+	InputFile.imbue(std::locale(InputFile.getloc(), new std::codecvt_utf8_utf16<wchar_t, 0x10FFFF, std::consume_header>));
 
 	OutputFile.open(copy);
 	if (InputFile.is_open())
 	{
 		std::wstringstream ss;
 		ss << InputFile.rdbuf();
-		OutputFile << "#include \"" << XorHdrFileName << "\"" << std::endl
-			<< regexReplaceMacro(ss.str(), encryptMacroContents) << std::endl;
+
+		bool foundAny = false;
+		std::wstring encFile = regexReplaceMacro(ss.str(), encryptMacroContents, foundAny);
+
+		// only inject header into files with the macro
+		if (foundAny) {
+			XTrace("[+] Injecting header into file: %ls\n", orig.c_str());
+			OutputFile << L"#include \"" << XorHdrFileName << L"\"" << std::endl;
+		}
+		OutputFile << encFile << std::endl;
 	}
 	InputFile.close();
 	OutputFile.close();
@@ -125,7 +139,7 @@ void initialize()
 		MessageBox(NULL, L"Failed to find C runtime for string crypt", L"Compile-Time string crypt failed", MB_OK);
 
 	ProjectDir = lower_wstring(fs::current_path().wstring());
-	XTrace("[+]Project Dir:%ls\n", ProjectDir.c_str());
+	XTrace("[+] Project Dir:%ls\n", ProjectDir.c_str());
 	
 	XorHdrFullPath = ProjectDir / XorHdrFileName;
 
@@ -133,7 +147,7 @@ void initialize()
 	xorHeader.open(XorHdrFullPath);
 	xorHeader << fileAsStr;
 	xorHeader.close();
-	XTrace("[+]Wrote Decryptor Header to:%ls\n", XorHdrFullPath.c_str());
+	XTrace("[+] Wrote Decryptor Header to:%ls\n", XorHdrFullPath.c_str());
 
 	targetFunction = GetProcAddress(hModule, "_wsopen_s");
 

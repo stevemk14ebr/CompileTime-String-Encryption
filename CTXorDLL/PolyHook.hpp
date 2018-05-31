@@ -1,7 +1,7 @@
-#ifndef POLYHOOK_H
+﻿#ifndef POLYHOOK_H
 #define POLYHOOK_H
 #include <windows.h>
-#include "../Capstone/include/capstone.h"
+#include "capstone.h"
 #include <DbgHelp.h>
 #include <string>
 #include <vector>
@@ -319,7 +319,6 @@ namespace PLH {
 	};
 
 #ifndef _WIN64
-#define Detour X86Detour
 	//x86 5 Byte Detour
 	class X86Detour :public AbstractDetour
 	{
@@ -343,8 +342,8 @@ namespace PLH {
 		void WriteRelativeJMP(uintptr_t Destination, uintptr_t JMPDestination);
 		void WriteAbsoluteJMP(uintptr_t Destination, uintptr_t JMPDestination);
 	};
+#define Detour X86Detour
 #else
-#define Detour X64Detour
 	//X64 6 Byte Detour
 	class X64Detour :public AbstractDetour
 	{
@@ -368,6 +367,7 @@ namespace PLH {
 	private:
 		void WriteAbsoluteJMP(const uintptr_t Destination,const uintptr_t JMPDestination);
 	};
+#define Detour X64Detour
 #endif //END _WIN64 IFDEF
 
 	//Swap Virtual Function Pointer to Destination
