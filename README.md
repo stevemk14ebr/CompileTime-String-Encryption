@@ -1,5 +1,5 @@
 # CompileTime-String-Encryption
-C++ 17 compile time string encryption supporting vs2010-2017. Rewrite and update of: https://github.com/stevemk14ebr/VS2013-Compile-Time-XOR
+C++ 17 compile time string encryption supporting vs2010-2019. Rewrite and update of: https://github.com/stevemk14ebr/VS2013-Compile-Time-XOR
 
 # Changelog compared to other repo
 - File parsing supports widechars, UTF-8 recommended
